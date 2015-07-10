@@ -9,6 +9,9 @@ type OptionLength uint8
 type RouteAddress uint32
 type OptionData uint8
 type SecurityLevel uint16
+type SecurityCompartments uint16
+type SecurityHandlingRestrictions uint16
+type SecurityTCC uint32
 
 const (
 	EndOfOptionList         OptionType = 0
@@ -77,37 +80,32 @@ func Parse(opts []byte) (Options, error) {
 			options = append(options, option)
 			continue
 		}
-
+		data, l, n, err := parseOption(opts[i:])
+		if err != nil {
+			return Options{}, err
+		}
+		i += n
+		option.Length = l
+		option.Data = data
+		options = append(options, option)
 	}
-	return Options{}, nil
+	return options, nil
 
 }
 
-type optParser func([]byte) (OptionData, OptionLength, error)
-
-var parsers = map[OptionType]optParser{Security: parseSecurity}
-
-func parseOption(opts []byte, oType OptionType) (OptionData, OptionLength, error) {
-	switch oType {
-	case Security:
-		return Security, nil
-	case LooseSourceRecordRoute:
-		return LooseSourceRecordRoute, nil
-	case StrictSourceRecordRoute:
-		return StrictSourceRecordRoute, nil
-	case RecordRoute:
-		return RecordRoute, nil
-	case StreamIdentifier:
-		return StreamIdentifier, nil
-	case InternetTimestamp:
-		return InternetTimestamp, nil
-	default:
-		//Just return EndOfOptionList to satisfy return
-		return EndOfOptionList, ErrorOptionType
+func parseOption(opts []byte) ([]OptionData, OptionLength, int, error) {
+	l := opts[0]
+	if l < 0 {
+		return []OptionData{}, 0, 0, ErrorNegativeOptionLength
 	}
-}
-
-func parseSecurity(odata []byte) (OptionData, OptionLength, error) {
+	ol := OptionLength(l)
+	rem := int(l) - 2 // Length includes the length byte and type byte so read l - 2 more bytes
+	dataBytes := opts[2:rem]
+	ods := make([]OptionData, 0)
+	for i := 0; i < rem; i++ {
+		ods = append(ods, OptionData(dataBytes[i]))
+	}
+	return ods, ol, rem, nil
 }
 
 func getOptionType(b byte) (OptionType, error) {
