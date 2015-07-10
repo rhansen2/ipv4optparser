@@ -46,6 +46,8 @@ var (
 	ErrorOptionDataTooLarge   = fmt.Errorf("The length of the options data is larger than the max options length")
 	ErrorOptionType           = fmt.Errorf("Invalid option type")
 	ErrorNegativeOptionLength = fmt.Errorf("Negative option length")
+	ErrorNotEnoughData        = fmt.Errorf("Not enough data left to parse option")
+	ErrorOptionTypeMismatch   = fmt.Errorf("Tried to convert an option to the wrong type")
 )
 
 type Option struct {
@@ -55,6 +57,15 @@ type Option struct {
 }
 
 type Options []Option
+
+type SecurityOption struct {
+}
+
+func (o Option) ToSecurity() (SecurityOption, error) {
+	if o.Type != Security {
+		return SecurityOption{}, ErrorOptionTypeMismatch
+	}
+}
 
 func Parse(opts []byte) (Options, error) {
 	optsLen := len(opts)
@@ -96,10 +107,13 @@ func Parse(opts []byte) (Options, error) {
 func parseOption(opts []byte) ([]OptionData, OptionLength, int, error) {
 	l := opts[0]
 	if l < 0 {
-		return []OptionData{}, 0, 0, ErrorNegativeOptionLength
+		return []OptionData{}, 0, 0, ErrorNotEnoughData
 	}
 	ol := OptionLength(l)
-	rem := int(l) - 2 // Length includes the length byte and type byte so read l - 2 more bytes
+	rem := int(l) - 2      // Length includes the length byte and type byte so read l - 2 more bytes
+	if rem > len(opts)-1 { // If the remaining data is longer than the length of the options data - 1 for length byte
+		return []OptionData{}, 0, 0, ErrorNegativeOptionLength
+	}
 	dataBytes := opts[2:rem]
 	ods := make([]OptionData, 0)
 	for i := 0; i < rem; i++ {
