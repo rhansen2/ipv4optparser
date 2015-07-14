@@ -20,6 +20,13 @@ var tsTest = []byte{
 	171, 130, 3, 238, 171, 118, 3, 238, 171, 118,
 }
 
+var tsTest2 = []byte{
+	68, 36, 37, 97, 137, 165, 1, 25, 4, 67,
+	3, 108, 66, 109, 38, 50, 4, 67, 3, 101,
+	66, 109, 52, 166, 4, 67, 3, 93, 66, 109,
+	52, 165, 4, 67, 3, 93,
+}
+
 func TestParse(t *testing.T) {
 	_, err := ipv4opt.Parse(rrTest)
 	if err != nil {
@@ -44,7 +51,21 @@ func TestToRecordRoute(t *testing.T) {
 
 func TestToTimestamp(t *testing.T) {
 	ops, err := ipv4opt.Parse(tsTest)
-	// but the option type is removed so only l - 1
+	if err != nil {
+		t.Fatal(err)
+	}
+	tsopt := ops[0]
+	if tsopt.Type != ipv4opt.InternetTimestamp {
+		t.Fatal("Failed to parse TS out of TS option")
+	}
+	_, err = tsopt.ToTimeStamp()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestToTimestampTwo(t *testing.T) {
+	ops, err := ipv4opt.Parse(tsTest2)
 	if err != nil {
 		t.Fatal(err)
 	}

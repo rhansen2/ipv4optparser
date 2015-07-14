@@ -2,6 +2,7 @@ package ipv4opt
 
 import (
 	"fmt"
+	"github.com/golang/glog"
 )
 
 type OptionType uint8
@@ -49,9 +50,9 @@ const (
 )
 
 const (
-	TSOnly = iota + 1
-	TSAndAddr
-	TSPrespec
+	TSOnly    = 0
+	TSAndAddr = 1
+	TSPrespec = 3
 )
 
 var (
@@ -196,12 +197,12 @@ func (o Option) ToTimeStamp() (TimeStampOption, error) {
 	var err error
 	switch ts.Flags {
 	case TSOnly:
-		ts.Stamps, err = getStampsTSOnly(o.Data[2:], len(o.Data)-2)
+		ts.Stamps, err = getStampsTSOnly(o.Data[1:], len(o.Data)-1)
 		if err != nil {
 			return ts, err
 		}
 	case TSAndAddr, TSPrespec:
-		ts.Stamps, err = getStamps(o.Data[2:], len(o.Data)-2)
+		ts.Stamps, err = getStamps(o.Data[1:], len(o.Data)-1)
 		if err != nil {
 			return ts, err
 		}
@@ -213,9 +214,9 @@ func getStampsTSOnly(data []OptionData, length int) ([]Stamp, error) {
 	stamp := make([]Stamp, 0)
 	for i := 0; i < length; i += 4 {
 		st := Stamp{}
-		st.Time |= Timestamp(data[i] << 24)
-		st.Time |= Timestamp(data[i+1] << 16)
-		st.Time |= Timestamp(data[i+2] << 8)
+		st.Time |= Timestamp(data[i]) << 24
+		st.Time |= Timestamp(data[i+1]) << 16
+		st.Time |= Timestamp(data[i+2]) << 8
 		st.Time |= Timestamp(data[i+3])
 		stamp = append(stamp, st)
 	}
@@ -226,13 +227,13 @@ func getStamps(data []OptionData, length int) ([]Stamp, error) {
 	stamp := make([]Stamp, 0)
 	for i := 0; i < length; i += 8 {
 		st := Stamp{}
-		st.Time |= Timestamp(data[i] << 24)
-		st.Time |= Timestamp(data[i+1] << 16)
-		st.Time |= Timestamp(data[i+2] << 8)
+		st.Time |= Timestamp(data[i]) << 24
+		st.Time |= Timestamp(data[i+1]) << 16
+		st.Time |= Timestamp(data[i+2]) << 8
 		st.Time |= Timestamp(data[i+3])
-		st.Addr |= Address(data[i+4] << 24)
-		st.Addr |= Address(data[i+5] << 16)
-		st.Addr |= Address(data[i+6] << 8)
+		st.Addr |= Address(data[i+4]) << 24
+		st.Addr |= Address(data[i+5]) << 16
+		st.Addr |= Address(data[i+6]) << 8
 		st.Addr |= Address(data[i+7])
 		stamp = append(stamp, st)
 	}
