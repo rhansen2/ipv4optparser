@@ -120,8 +120,8 @@ func (o Option) ToRecordRoute() (RecordRouteOption, error) {
 	rro := RecordRouteOption{}
 	rro.Type = o.Type
 	rro.Length = o.Length
-	if o.Type != StrictSourceRecordRoute ||
-		o.Type != LooseSourceRecordRoute ||
+	if o.Type != StrictSourceRecordRoute &&
+		o.Type != LooseSourceRecordRoute &&
 		o.Type != RecordRoute {
 		return rro, ErrorOptionTypeMismatch
 	}
