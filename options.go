@@ -283,19 +283,23 @@ func parseOption(opts []byte) ([]OptionData, OptionLength, int, error) {
 		return []OptionData{}, 0, 0, ErrorNotEnoughData
 	}
 	ol := OptionLength(l)
-	rem := int(l) - 2      // Length includes the length byte and type byte so read l - 2 more bytes
+	// Length includes the length byte and type byte so read l - 2 more bytes
+	// but the option type is removed so only l - 1
+	rem := int(l) - 1
 	if rem > len(opts)-1 { // If the remaining data is longer than the length of the options data - 1 for length byte
 		return []OptionData{}, 0, 0, ErrorNegativeOptionLength
 	}
 	dataBytes := opts[2:rem]
+	dbl := len(dataBytes)
 	ods := make([]OptionData, 0)
-	for i := 0; i < rem; i++ {
+	for i := 0; i < dbl; i++ {
 		ods = append(ods, OptionData(dataBytes[i]))
 	}
 	return ods, ol, rem, nil
 }
 
 func getOptionType(b byte) (OptionType, error) {
+	fmt.Println(b)
 	switch OptionType(b) {
 	case EndOfOptionList:
 		return EndOfOptionList, nil
