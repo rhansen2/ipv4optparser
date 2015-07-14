@@ -129,8 +129,7 @@ func (o Option) ToRecordRoute() (RecordRouteOption, error) {
 	if routeLen%4 != 0 {
 		return rro, ErrorRouteLengthIncorrect
 	}
-	for i := 1; i < int(routeLen); i += 4 {
-		//Start at i = 1 Because the first byte following the lenght byte is the pointer and we don't need that
+	for i := 0; i < int(routeLen); i += 4 {
 		var route Route
 		route |= Route(o.Data[i]) << 24
 		route |= Route(o.Data[i+1]) << 16
@@ -188,12 +187,12 @@ func (o Option) ToTimeStamp() (TimeStampOption, error) {
 	if len(o.Data) > MaxOptionsLen {
 		return ts, ErrorOptionDataTooLarge
 	}
-	if len(o.Data)-2%4 != 0 {
-		return ts, ErrorTSLengthIncorrect
-	}
-
 	ts.Over = Overflow(o.Data[1] >> 4)
 	ts.Flags = Flag(o.Data[1] & 0x0F)
+	// Take off one because of the flag and overflow byte
+	if len(o.Data)%4-1 != 0 && ts.Flags != TSOnly {
+		return ts, ErrorTSLengthIncorrect
+	}
 	var err error
 	switch ts.Flags {
 	case TSOnly:
@@ -280,26 +279,24 @@ func Parse(opts []byte) (Options, error) {
 func parseOption(opts []byte) ([]OptionData, OptionLength, int, error) {
 	l := opts[0]
 	if l < 0 {
-		return []OptionData{}, 0, 0, ErrorNotEnoughData
+		return []OptionData{}, 0, 0, ErrorNegativeOptionLength
 	}
 	ol := OptionLength(l)
 	// Length includes the length byte and type byte so read l - 2 more bytes
-	// but the option type is removed so only l - 1
-	rem := int(l) - 1
+	rem := int(l) - 2
 	if rem > len(opts)-1 { // If the remaining data is longer than the length of the options data - 1 for length byte
-		return []OptionData{}, 0, 0, ErrorNegativeOptionLength
+		return []OptionData{}, 0, 0, ErrorNotEnoughData
 	}
-	dataBytes := opts[2:rem]
+	dataBytes := opts[1:rem]
 	dbl := len(dataBytes)
 	ods := make([]OptionData, 0)
 	for i := 0; i < dbl; i++ {
 		ods = append(ods, OptionData(dataBytes[i]))
 	}
-	return ods, ol, rem, nil
+	return ods, ol, int(l), nil
 }
 
 func getOptionType(b byte) (OptionType, error) {
-	fmt.Println(b)
 	switch OptionType(b) {
 	case EndOfOptionList:
 		return EndOfOptionList, nil
