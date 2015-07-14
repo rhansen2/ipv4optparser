@@ -2,7 +2,6 @@ package ipv4opt
 
 import (
 	"fmt"
-	"github.com/golang/glog"
 )
 
 type OptionType uint8
