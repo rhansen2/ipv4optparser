@@ -2,6 +2,7 @@ package ipv4opt
 
 import (
 	"fmt"
+	"net"
 )
 
 type OptionType uint8
@@ -18,6 +19,24 @@ type Timestamp uint32
 type Flag uint8
 type Overflow uint8
 type Address uint32
+
+func (addr Address) String() string {
+	var a, b, c, d byte
+	a = byte(addr >> 24)
+	b = byte((addr & 0x00ff0000) >> 16)
+	c = byte((addr & 0x0000ff00) >> 8)
+	d = byte(addr & 0x000000ff)
+	return net.IPv4(a, b, c, d).String()
+}
+
+func (r Route) String() string {
+	var a, b, c, d byte
+	a = byte(r >> 24)
+	b = byte((r & 0x00ff0000) >> 16)
+	c = byte((r & 0x0000ff00) >> 8)
+	d = byte(r & 0x000000ff)
+	return net.IPv4(a, b, c, d).String()
+}
 
 const (
 	EndOfOptionList         OptionType = 0
