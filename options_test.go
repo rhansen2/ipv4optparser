@@ -27,6 +27,11 @@ var tsTest2 = []byte{
 	52, 165, 4, 67, 3, 93,
 }
 
+var tsPreSpec = []byte{
+	68, 12, 13, 67, 66, 109, 38,
+	50, 2, 208, 113, 237,
+}
+
 func TestParse(t *testing.T) {
 	_, err := ipv4opt.Parse(rrTest)
 	if err != nil {
@@ -76,5 +81,24 @@ func TestToTimestampTwo(t *testing.T) {
 	_, err = tsopt.ToTimeStamp()
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestToTimestampPreSpec(t *testing.T) {
+	ops, err := ipv4opt.Parse(tsPreSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tsopt := ops[0]
+	if tsopt.Type != ipv4opt.InternetTimestamp {
+		t.Fatal("Failed to parse TS out of TS options")
+	}
+	ts, err := tsopt.ToTimeStamp()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stamp := ts.Stamps[0]
+	if stamp.Addr != 1114449458 {
+		t.Fatal("Wrong IP found in prespec")
 	}
 }

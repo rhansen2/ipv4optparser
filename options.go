@@ -189,19 +189,19 @@ func (o Option) ToTimeStamp() (TimeStampOption, error) {
 	}
 	ts.Over = Overflow(o.Data[1] >> 4)
 	ts.Flags = Flag(o.Data[1] & 0x0F)
-	// Take off one because of the flag and overflow byte
-	if len(o.Data)%4-1 != 0 && ts.Flags != TSOnly {
+	// Take off two because of the flag and overflow byte and the ponter byte
+	if len(o.Data)%4-2 != 0 && ts.Flags != TSOnly {
 		return ts, ErrorTSLengthIncorrect
 	}
 	var err error
 	switch ts.Flags {
 	case TSOnly:
-		ts.Stamps, err = getStampsTSOnly(o.Data[1:], len(o.Data)-1)
+		ts.Stamps, err = getStampsTSOnly(o.Data[2:], len(o.Data)-2)
 		if err != nil {
 			return ts, err
 		}
 	case TSAndAddr, TSPrespec:
-		ts.Stamps, err = getStamps(o.Data[1:], len(o.Data)-1)
+		ts.Stamps, err = getStamps(o.Data[2:], len(o.Data)-2)
 		if err != nil {
 			return ts, err
 		}
@@ -226,14 +226,14 @@ func getStamps(data []OptionData, length int) ([]Stamp, error) {
 	stamp := make([]Stamp, 0)
 	for i := 0; i < length; i += 8 {
 		st := Stamp{}
-		st.Time |= Timestamp(data[i]) << 24
-		st.Time |= Timestamp(data[i+1]) << 16
-		st.Time |= Timestamp(data[i+2]) << 8
-		st.Time |= Timestamp(data[i+3])
-		st.Addr |= Address(data[i+4]) << 24
-		st.Addr |= Address(data[i+5]) << 16
-		st.Addr |= Address(data[i+6]) << 8
-		st.Addr |= Address(data[i+7])
+		st.Addr |= Address(data[i]) << 24
+		st.Addr |= Address(data[i+1]) << 16
+		st.Addr |= Address(data[i+2]) << 8
+		st.Addr |= Address(data[i+3])
+		st.Time |= Timestamp(data[i+4]) << 24
+		st.Time |= Timestamp(data[i+5]) << 16
+		st.Time |= Timestamp(data[i+6]) << 8
+		st.Time |= Timestamp(data[i+7])
 		stamp = append(stamp, st)
 	}
 	return stamp, nil
@@ -287,7 +287,8 @@ func parseOption(opts []byte) ([]OptionData, OptionLength, int, error) {
 	if rem > len(opts)-1 { // If the remaining data is longer than the length of the options data - 1 for length byte
 		return []OptionData{}, 0, 0, ErrorNotEnoughData
 	}
-	dataBytes := opts[1:rem]
+	// Add one to rem because the synax is [x:)
+	dataBytes := opts[1 : rem+1]
 	dbl := len(dataBytes)
 	ods := make([]OptionData, 0)
 	for i := 0; i < dbl; i++ {
