@@ -1,8 +1,9 @@
 package ipv4opt_test
 
 import (
-	"github.com/rhansen2/ipv4optparser"
 	"testing"
+
+	"github.com/rhansen2/ipv4optparser"
 )
 
 var rrTest = []byte{
@@ -48,10 +49,11 @@ func TestToRecordRoute(t *testing.T) {
 	if rropt.Type != ipv4opt.RecordRoute {
 		t.Fatal("Failed to parse RR out of RR option")
 	}
-	_, err = rropt.ToRecordRoute()
+	rro, err := rropt.ToRecordRoute()
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log(rro)
 }
 
 func TestToTimestamp(t *testing.T) {
