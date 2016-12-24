@@ -5,25 +5,33 @@ import (
 	"net"
 )
 
-
 //OptionType repesents and option.
 type OptionType uint8
+
 //OptionLength is the length of an option.
 type OptionLength uint8
+
 //SecurityLevel is the security level from a security option.
 type SecurityLevel uint16
+
 //SecurityCompartment ...
 type SecurityCompartment uint16
+
 //SecurityHandlingRestriction ...
 type SecurityHandlingRestriction uint16
+
 //SecurityTCC ...
 type SecurityTCC uint32
+
 //StreamID is the stream id.
 type StreamID uint16
+
 //Timestamp is a timestamp specified in an IP timestamp option.
 type Timestamp uint32
+
 //Flag is flag from an option
 type Flag uint8
+
 // Overflow is an overflow from a timestamp option.
 type Overflow uint8
 
@@ -32,7 +40,8 @@ type Address uint32
 
 func (addr Address) String() string {
 	var a, b, c, d byte
-	a = byte(addr >> 24)
+	fmt.
+		a = byte(addr >> 24)
 	b = byte((addr & 0x00ff0000) >> 16)
 	c = byte((addr & 0x0000ff00) >> 8)
 	d = byte(addr & 0x000000ff)
@@ -49,68 +58,68 @@ func (r Route) String() string {
 const (
 	//EndOfOptionList indicates the end of the option list. This is used at the
 	// end of all options.
-	EndOfOptionList         OptionType = 0
+	EndOfOptionList OptionType = 0
 	//NoOperation is used between options.
-	NoOperation                        = 1
+	NoOperation = 1
 	//Security provides a way for hosts to send security compartmentation.
-	Security                           = 130
+	Security = 130
 	//LooseSourceRecordRoute provides a means for the sources of an
 	//internet datagram to supply routing information to be used in the
 	//gateways in forwarding the datagram to the destination, and to
 	//record the route information.
-	LooseSourceRecordRoute             = 131
+	LooseSourceRecordRoute = 131
 	//StrictSourceRecordRoute provides a means for the source of an internet
 	//datagram to supply routing information to be used by the gateways
 	//in forwardig the datagram to the destination, and to record the route information.
-	StrictSourceRecordRoute            = 137
+	StrictSourceRecordRoute = 137
 	//RecordRoute provides a means to record the route of an internet datagram.
-	RecordRoute                        = 7
+	RecordRoute = 7
 	//StreamIdentifier provides a way for the 16-bit SATNET stream identifier
 	//to be carried through networks that do not support the stream concept.
-	StreamIdentifier                   = 136
+	StreamIdentifier = 136
 	//InternetTimestamp records timestamps along the path of the datagram.
-	InternetTimestamp                  = 68
+	InternetTimestamp = 68
 	//MaxOptionsLen is the maximum length of an IPv4 option section.
-	MaxOptionsLen           int        = 40 // 60 Byte maximum size - 20 bytes for manditory fields
+	MaxOptionsLen int = 40 // 60 Byte maximum size - 20 bytes for manditory fields
 
 	//Unclassified security level.
 	Unclassified SecurityLevel = 0x0
 	//Confidential security level.
-	Confidential               = 0xF135
+	Confidential = 0xF135
 	//EFTO security level.
-	EFTO                       = 0x789A
+	EFTO = 0x789A
 	//MMMM security level.
-	MMMM                       = 0xBC4D
+	MMMM = 0xBC4D
 	// PROG security level.
-	PROG                       = 0x5E26
+	PROG = 0x5E26
 	// Restricted security level.
-	Restricted                 = 0xAF13
+	Restricted = 0xAF13
 	// Secret security level.
-	Secret                     = 0xD788
+	Secret = 0xD788
 	// TopSecret security level
-	TopSecret                  = 0x6BC5
+	TopSecret = 0x6BC5
 	//Reserved0 (reserved for future use).
-	Reserved0                  = 0x35E2
+	Reserved0 = 0x35E2
 	//Reserved1 (reserved for future use).
-	Reserved1                  = 0x9AF1
+	Reserved1 = 0x9AF1
 	//Reserved2 (reserved for future use).
-	Reserved2                  = 0x4D78
+	Reserved2 = 0x4D78
 	//Reserved3 (reserved for future use).
-	Reserved3                  = 0x24BD
+	Reserved3 = 0x24BD
 	//Reserved4 (reserved for future use).
-	Reserved4                  = 0x135E
+	Reserved4 = 0x135E
 	//Reserved5 (reserved for future use).
-	Reserved5                  = 0x89AF
+	Reserved5 = 0x89AF
 	//Reserved6 (reserved for future use).
-	Reserved6                  = 0xC4D6
+	Reserved6 = 0xC4D6
 	//Reserved7 (reserved for future use).
-	Reserved7                  = 0xE26B
+	Reserved7 = 0xE26B
 )
 
 const (
 	//TSOnly specifies that only timestamps should be included in the
 	//timestamp option.
-	TSOnly    = 0
+	TSOnly = 0
 	//TSAndAddr specifies that each timestamp is preceded with the ip
 	//address of the registering entity.
 	TSAndAddr = 1
@@ -121,34 +130,34 @@ const (
 var (
 	//ErrOptionDataTooLarge is returned when the length of the option data is
 	//greater than the maximum option size.
-	ErrOptionDataTooLarge      = fmt.Errorf("The length of the options data is larger than the max options length")
+	ErrOptionDataTooLarge = fmt.Errorf("The length of the options data is larger than the max options length")
 	//ErrOptionType is returned when an invalid option type is found.
-	ErrOptionType              = fmt.Errorf("Invalid option type")
+	ErrOptionType = fmt.Errorf("Invalid option type")
 	//ErrNegativeOptionLength is returned when the option length is negative.
-	ErrNegativeOptionLength    = fmt.Errorf("Negative option length")
+	ErrNegativeOptionLength = fmt.Errorf("Negative option length")
 	//ErrNotEnoughData is returned when there is not enough data left to fulfill the option.
-	ErrNotEnoughData           = fmt.Errorf("Not enough data left to parse option")
+	ErrNotEnoughData = fmt.Errorf("Not enough data left to parse option")
 	//ErrInvalidLength is returned when the option length is not appropriate for
 	//specified option.
-	ErrInvalidLength           = fmt.Errorf("The option length is incorrect")
+	ErrInvalidLength = fmt.Errorf("The option length is incorrect")
 	//ErrRouteLengthIncorrect is returned when the length of a record route option is not
 	//a multiple of the address length.
-	ErrRouteLengthIncorrect    = fmt.Errorf("The length of the route data is not a multiple of 4")
+	ErrRouteLengthIncorrect = fmt.Errorf("The length of the route data is not a multiple of 4")
 	//ErrTSLengthIncorrect is returned when the length of a timestamp option is not
 	//a multiple of the address length.
-	ErrTSLengthIncorrect       = fmt.Errorf("The length of the route data is not a multiple of 4")
+	ErrTSLengthIncorrect = fmt.Errorf("The length of the route data is not a multiple of 4")
 	//ErrStreamIDLengthIncorrect is returned when the length of the streamid is not correct.
 	ErrStreamIDLengthIncorrect = fmt.Errorf("Then stream ID length is not 4")
 )
 
 type option struct {
-	otype   OptionType
+	otype  OptionType
 	length OptionLength
 	data   []byte
 }
 
-func(o option) Type() OptionType {
-	
+func (o option) Type() OptionType {
+	return o.otype
 }
 
 //IPOption is the interface for an IPv4 option.
@@ -158,9 +167,9 @@ type IPOption interface {
 	Data() []byte
 }
 
+//SecurityOption is the ipv4 security option
 type SecurityOption struct {
-	Type        OptionType
-	Length      OptionLength
+	o           option
 	Level       SecurityLevel
 	Compartment SecurityCompartment
 	Restriction SecurityHandlingRestriction
@@ -194,9 +203,9 @@ func (o Option) ToSecurity() (SecurityOption, error) {
 	return so, nil
 }
 
+//RecordRouteOption is an ipv4 record route option
 type RecordRouteOption struct {
-	Type    OptionType
-	Length  OptionLength
+	o       option
 	Pointer byte
 	Routes  []Route
 }
@@ -227,10 +236,10 @@ func (o Option) ToRecordRoute() (RecordRouteOption, error) {
 	return rro, nil
 }
 
+//StreamIdentifierOption is an ipv4 stream id option
 type StreamIdentifierOption struct {
-	Type   OptionType
-	Length OptionLength
-	ID     StreamID
+	o  option
+	ID StreamID
 }
 
 func (o Option) ToStreamID() (StreamIdentifierOption, error) {
@@ -250,14 +259,15 @@ func (o Option) ToStreamID() (StreamIdentifierOption, error) {
 
 }
 
+//Stamp represents a timestamp address pair from a timestamp option
 type Stamp struct {
 	Time Timestamp
 	Addr Address
 }
 
+//TimeStampOption is an IPv4 timestamp option
 type TimeStampOption struct {
-	Type    OptionType
-	Length  OptionLength
+	o       option
 	Pointer byte
 	Flags   Flag
 	Over    Overflow
@@ -272,7 +282,7 @@ func (o Option) ToTimeStamp() (TimeStampOption, error) {
 		return ts, ErrorOptionTypeMismatch
 	}
 	if len(o.Data) > MaxOptionsLen {
-		return ts, ErrorOptionDataTooLarge
+		return ts, ErrOptionDataTooLarge
 	}
 	ts.Pointer = byte(o.Data[0])
 	ts.Over = Overflow(o.Data[1] >> 4)
@@ -327,20 +337,24 @@ func getStamps(data []OptionData, length int) ([]Stamp, error) {
 	return stamp, nil
 }
 
+// Options is a list of IPv4 Options.
+type Options []IPOption
+
+//Parse parses opts into IPv4 options.
 func Parse(opts []byte) (Options, error) {
 	optsLen := len(opts)
+	var options Options
 	if optsLen > MaxOptionsLen {
-		return Options{}, ErrorOptionDataTooLarge
+		return nil, ErrOptionDataTooLarge
 	}
 	if optsLen == 0 {
-		return Options{}, nil
+		return options, nil
 	}
-	options := make(Options, 0)
 	for i := 0; i < optsLen; {
-		option := Option{}
+		var opt option
 		oType, err := getOptionType(opts[i])
 		if err != nil {
-			return options, err
+			return nil, err
 		}
 		i++
 		option.Type = oType
