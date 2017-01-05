@@ -8,9 +8,6 @@ import (
 //OptionType repesents and option.
 type OptionType uint8
 
-//OptionLength is the length of an option.
-type OptionLength uint8
-
 //SecurityLevel is the security level from a security option.
 type SecurityLevel uint16
 
@@ -22,9 +19,6 @@ type SecurityHandlingRestriction uint16
 
 //SecurityTCC ...
 type SecurityTCC uint32
-
-//StreamID is the stream id.
-type StreamID uint16
 
 //Timestamp is a timestamp specified in an IP timestamp option.
 type Timestamp uint32
@@ -40,8 +34,7 @@ type Address uint32
 
 func (addr Address) String() string {
 	var a, b, c, d byte
-	fmt.
-		a = byte(addr >> 24)
+	a = byte(addr >> 24)
 	b = byte((addr & 0x00ff0000) >> 16)
 	c = byte((addr & 0x0000ff00) >> 8)
 	d = byte(addr & 0x000000ff)
@@ -58,7 +51,7 @@ func (r Route) String() string {
 const (
 	//EndOfOptionList indicates the end of the option list. This is used at the
 	// end of all options.
-	EndOfOptionList OptionType = 0
+	EndOfOptionList = 0
 	//NoOperation is used between options.
 	NoOperation = 1
 	//Security provides a way for hosts to send security compartmentation.
@@ -133,26 +126,14 @@ var (
 	ErrOptionDataTooLarge = fmt.Errorf("The length of the options data is larger than the max options length")
 	//ErrOptionType is returned when an invalid option type is found.
 	ErrOptionType = fmt.Errorf("Invalid option type")
-	//ErrNegativeOptionLength is returned when the option length is negative.
-	ErrNegativeOptionLength = fmt.Errorf("Negative option length")
-	//ErrNotEnoughData is returned when there is not enough data left to fulfill the option.
-	ErrNotEnoughData = fmt.Errorf("Not enough data left to parse option")
-	//ErrInvalidLength is returned when the option length is not appropriate for
-	//specified option.
-	ErrInvalidLength = fmt.Errorf("The option length is incorrect")
-	//ErrRouteLengthIncorrect is returned when the length of a record route option is not
-	//a multiple of the address length.
-	ErrRouteLengthIncorrect = fmt.Errorf("The length of the route data is not a multiple of 4")
-	//ErrTSLengthIncorrect is returned when the length of a timestamp option is not
-	//a multiple of the address length.
-	ErrTSLengthIncorrect = fmt.Errorf("The length of the route data is not a multiple of 4")
-	//ErrStreamIDLengthIncorrect is returned when the length of the streamid is not correct.
-	ErrStreamIDLengthIncorrect = fmt.Errorf("Then stream ID length is not 4")
+	//ErrIncorrectRRLength is returned when an RR option has route data with a length
+	//that is not a multiple of 4.
+	ErrIncorrectRRLength = fmt.Errorf("The length of the RR data is not a multiple of 4")
 )
 
 type option struct {
 	otype  OptionType
-	length OptionLength
+	length int
 	data   []byte
 }
 
@@ -160,100 +141,109 @@ func (o option) Type() OptionType {
 	return o.otype
 }
 
+func (o option) Length() int {
+	return o.length
+}
+
+func (o option) Data() []byte {
+	return o.data
+}
+
 //IPOption is the interface for an IPv4 option.
 type IPOption interface {
 	Type() OptionType
-	Length() OptionLength
+	Length() int
 	Data() []byte
 }
 
-//SecurityOption is the ipv4 security option
-type SecurityOption struct {
-	o           option
+//Sec is the ipv4 security option
+type Sec struct {
+	option
 	Level       SecurityLevel
 	Compartment SecurityCompartment
 	Restriction SecurityHandlingRestriction
 	TCC         SecurityTCC
 }
 
-func (o Option) ToSecurity() (SecurityOption, error) {
-	so := SecurityOption{}
-	so.Type = o.Type
-	so.Length = o.Length
-	if o.Type != Security {
-		return so, ErrorOptionTypeMismatch
-	}
-	if o.Length != 11 {
-		return so, ErrorInvalidLength
-	}
-	data := o.Data
-	so.Level |= SecurityLevel(data[0]) << 8
-	so.Level |= SecurityLevel(data[1])
+const securityOpLen = 11
 
-	so.Compartment |= SecurityCompartment(data[2]) << 8
-	so.Compartment |= SecurityCompartment(data[3])
+func parseSecurity(data []byte) (IPOption, error) {
+	var so Sec
+	so.option.otype = Security
+	if len(data) < securityOpLen {
+		return nil, fmt.Errorf("security option data too short %v", data)
+	}
+	so.option.length = securityOpLen
+	so.option.data = make([]byte, 11, 11)
+	copy(so.option.data, data)
 
-	so.Restriction |= SecurityHandlingRestriction(data[4]) << 8
-	so.Restriction |= SecurityHandlingRestriction(data[5])
+	so.Level |= SecurityLevel(data[2]) << 8
+
+	so.Level |= SecurityLevel(data[3])
+
+	so.Compartment |= SecurityCompartment(data[4]) << 8
+	so.Compartment |= SecurityCompartment(data[5])
+
+	so.Restriction |= SecurityHandlingRestriction(data[6]) << 8
+	so.Restriction |= SecurityHandlingRestriction(data[7])
 
 	so.TCC |= SecurityTCC(data[6]) << 16
-	so.TCC |= SecurityTCC(data[7]) << 8
-	so.TCC |= SecurityTCC(data[8])
+	so.TCC |= SecurityTCC(data[9]) << 8
+	so.TCC |= SecurityTCC(data[10])
 
 	return so, nil
 }
 
-//RecordRouteOption is an ipv4 record route option
-type RecordRouteOption struct {
-	o       option
+//RR is an ipv4 record route option
+type RR struct {
+	option
 	Pointer byte
 	Routes  []Route
 }
 
-func (o Option) ToRecordRoute() (RecordRouteOption, error) {
-	rro := RecordRouteOption{}
-	rro.Type = o.Type
-	rro.Length = o.Length
-	if o.Type != StrictSourceRecordRoute &&
-		o.Type != LooseSourceRecordRoute &&
-		o.Type != RecordRoute {
-		return rro, ErrorOptionTypeMismatch
+func parseRecordRoute(data []byte) (IPOption, error) {
+	var rr RR
+	rr.option.otype = OptionType(data[0])
+	rr.option.length = int(data[1])
+	rr.option.data = make([]byte, rr.option.length, rr.option.length)
+	copy(rr.option.data, data)
+
+	rr.Pointer = rr.option.data[2]
+	if (rr.option.length-3)%4 != 0 {
+		return nil, ErrIncorrectRRLength
 	}
-	routeLen := rro.Length - 3 // The length of routes is length - 3 because length include the pointer type and length
-	if routeLen%4 != 0 {
-		return rro, ErrorRouteLengthIncorrect
-	}
-	rro.Pointer = byte(o.Data[0])
-	for i := 1; i < int(routeLen); i += 4 {
+	var i int
+	for i = 3; i < rr.option.length; i += 4 {
 		var route Route
-		route |= Route(o.Data[i]) << 24
-		route |= Route(o.Data[i+1]) << 16
-		route |= Route(o.Data[i+2]) << 8
-		route |= Route(o.Data[i+3])
+		route |= Route(rr.option.data[i]) << 24
+		route |= Route(rr.option.data[i+1]) << 16
+		route |= Route(rr.option.data[i+2]) << 8
+		route |= Route(rr.option.data[i+3])
 
-		rro.Routes = append(rro.Routes, route)
+		rr.Routes = append(rr.Routes, route)
 	}
-	return rro, nil
+	return rr, nil
 }
 
-//StreamIdentifierOption is an ipv4 stream id option
-type StreamIdentifierOption struct {
-	o  option
-	ID StreamID
+//StreamID is an ipv4 stream id option
+type StreamID struct {
+	option
+	ID uint16
 }
 
-func (o Option) ToStreamID() (StreamIdentifierOption, error) {
-	sid := StreamIdentifierOption{}
-	sid.Type = o.Type
-	sid.Length = o.Length
-	if o.Type != StreamIdentifier {
-		return sid, ErrorOptionTypeMismatch
+const streamIDOptLen = 4
+
+func parseStreamID(data []byte) (IPOption, error) {
+	var sid StreamID
+	sid.option.otype = OptionType(data[0])
+	sid.option.length = streamIDOptLen
+	sid.option.data = make([]byte, streamIDOptLen, streamIDOptLen)
+	copy(sid.option.data, data)
+	if len(data) < 4 {
+		return nil, fmt.Errorf("Not enought data for stream id option")
 	}
-	if o.Length != 4 {
-		return sid, ErrorStreamIDLengthIncorrect
-	}
-	sid.ID |= StreamID(o.Data[0]) << 8
-	sid.ID |= StreamID(o.Data[1])
+	sid.ID |= uint16(data[2]) << 8
+	sid.ID |= uint16(data[3])
 
 	return sid, nil
 
@@ -265,51 +255,45 @@ type Stamp struct {
 	Addr Address
 }
 
-//TimeStampOption is an IPv4 timestamp option
-type TimeStampOption struct {
-	o       option
+//TS is an IPv4 timestamp option
+type TS struct {
+	option
 	Pointer byte
 	Flags   Flag
 	Over    Overflow
 	Stamps  []Stamp
 }
 
-func (o Option) ToTimeStamp() (TimeStampOption, error) {
-	ts := TimeStampOption{}
-	ts.Type = o.Type
-	ts.Length = o.Length
-	if o.Type != InternetTimestamp {
-		return ts, ErrorOptionTypeMismatch
-	}
-	if len(o.Data) > MaxOptionsLen {
-		return ts, ErrOptionDataTooLarge
-	}
-	ts.Pointer = byte(o.Data[0])
-	ts.Over = Overflow(o.Data[1] >> 4)
-	ts.Flags = Flag(o.Data[1] & 0x0F)
-	// Take off two because of the flag and overflow byte and the ponter byte
-	if len(o.Data)%4-2 != 0 && ts.Flags != TSOnly {
-		return ts, ErrorTSLengthIncorrect
-	}
+func parseTimeStamp(data []byte) (IPOption, error) {
+	var ts TS
+
+	ts.option.otype = OptionType(data[0])
+	ts.option.length = int(data[1])
+	ts.option.data = make([]byte, ts.option.length, ts.option.length)
+	copy(ts.option.data, data)
+	ts.Pointer = data[2]
+	ts.Over = Overflow(data[3] >> 4)
+	ts.Flags = Flag(data[3] & 0x0F)
 	var err error
 	switch ts.Flags {
 	case TSOnly:
-		ts.Stamps, err = getStampsTSOnly(o.Data[2:], len(o.Data)-2)
+		ts.Stamps, err = getStampsTSOnly(data[4:], ts.option.length-4)
 		if err != nil {
-			return ts, err
+			return nil, err
 		}
 	case TSAndAddr, TSPrespec:
-		ts.Stamps, err = getStamps(o.Data[2:], len(o.Data)-2)
+		ts.Stamps, err = getStamps(data[4:], ts.option.length-4)
 		if err != nil {
-			return ts, err
+			return nil, err
 		}
 	}
 	return ts, nil
 }
 
-func getStampsTSOnly(data []OptionData, length int) ([]Stamp, error) {
+func getStampsTSOnly(data []byte, length int) ([]Stamp, error) {
 	var stamp []Stamp
-	for i := 0; i < length; i += 4 {
+	var i int
+	for i = 0; i < length; i += 4 {
 		st := Stamp{}
 		st.Time |= Timestamp(data[i]) << 24
 		st.Time |= Timestamp(data[i+1]) << 16
@@ -320,9 +304,10 @@ func getStampsTSOnly(data []OptionData, length int) ([]Stamp, error) {
 	return stamp, nil
 }
 
-func getStamps(data []OptionData, length int) ([]Stamp, error) {
+func getStamps(data []byte, length int) ([]Stamp, error) {
 	var stamp []Stamp
-	for i := 0; i < length; i += 8 {
+	var i int
+	for i = 0; i < length; i += 8 {
 		st := Stamp{}
 		st.Addr |= Address(data[i]) << 24
 		st.Addr |= Address(data[i+1]) << 16
@@ -335,6 +320,53 @@ func getStamps(data []OptionData, length int) ([]Stamp, error) {
 		stamp = append(stamp, st)
 	}
 	return stamp, nil
+}
+
+// NoOp is the NoOperation option
+type NoOp struct {
+	option
+}
+
+func parseNOOP(data []byte) (IPOption, error) {
+	var opt NoOp
+	if len(data) < 1 {
+		return nil, fmt.Errorf("Failed to parse NoOperation, no data available")
+	}
+	opt.option.length = 1
+	opt.option.otype = NoOperation
+	opt.option.data = make([]byte, 1, 1)
+	copy(opt.option.data, data)
+	return opt, nil
+}
+
+// EOOList is the EndOfOptionsList option
+type EOOList struct {
+	option
+}
+
+func parseEOOList(data []byte) (IPOption, error) {
+	var opt EOOList
+	if len(data) < 1 {
+		return nil, fmt.Errorf("Failed to parse NoOperation, no data available")
+	}
+	opt.option.length = 1
+	opt.option.otype = NoOperation
+	opt.option.data = make([]byte, 1, 1)
+	copy(opt.option.data, data)
+	return opt, nil
+}
+
+type parseFunc func([]byte) (IPOption, error)
+
+var parsers = map[OptionType]parseFunc{
+	EndOfOptionList:         parseEOOList,
+	NoOperation:             parseNOOP,
+	Security:                parseSecurity,
+	LooseSourceRecordRoute:  parseRecordRoute,
+	StrictSourceRecordRoute: parseRecordRoute,
+	RecordRoute:             parseRecordRoute,
+	StreamIdentifier:        parseStreamID,
+	InternetTimestamp:       parseTimeStamp,
 }
 
 // Options is a list of IPv4 Options.
@@ -350,53 +382,21 @@ func Parse(opts []byte) (Options, error) {
 	if optsLen == 0 {
 		return options, nil
 	}
-	for i := 0; i < optsLen; {
-		var opt option
+	var i int
+	for i = 0; i < optsLen; {
 		oType, err := getOptionType(opts[i])
 		if err != nil {
 			return nil, err
 		}
-		i++
-		option.Type = oType
-		if oType == EndOfOptionList {
-			return append(options, option), nil
-		}
-		if oType == NoOperation {
-			options = append(options, option)
-			continue
-		}
-		data, l, n, err := parseOption(opts[i:])
+		o, err := parsers[oType](opts[i:])
 		if err != nil {
-			return Options{}, err
+			return nil, err
 		}
-		i += n
-		option.Length = l
-		option.Data = data
-		options = append(options, option)
+		options = append(options, o)
+		i += o.Length()
 	}
 	return options, nil
 
-}
-
-func parseOption(opts []byte) ([]OptionData, OptionLength, int, error) {
-	l := opts[0]
-	if l < 0 {
-		return []OptionData{}, 0, 0, ErrorNegativeOptionLength
-	}
-	ol := OptionLength(l)
-	// Length includes the length byte and type byte so read l - 2 more bytes
-	rem := int(l) - 2
-	if rem > len(opts)-1 { // If the remaining data is longer than the length of the options data - 1 for length byte
-		return []OptionData{}, 0, 0, ErrorNotEnoughData
-	}
-	// Add one to rem because the synax is [x:)
-	dataBytes := opts[1 : rem+1]
-	dbl := len(dataBytes)
-	ods := make([]OptionData, 0)
-	for i := 0; i < dbl; i++ {
-		ods = append(ods, OptionData(dataBytes[i]))
-	}
-	return ods, ol, int(l), nil
 }
 
 func getOptionType(b byte) (OptionType, error) {
@@ -419,6 +419,6 @@ func getOptionType(b byte) (OptionType, error) {
 		return InternetTimestamp, nil
 	default:
 		//Just return EndOfOptionList to satisfy return
-		return EndOfOptionList, ErrorOptionType
+		return EndOfOptionList, ErrOptionType
 	}
 }
